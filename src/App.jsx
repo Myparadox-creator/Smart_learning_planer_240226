@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { useUser, UserButton } from '@clerk/clerk-react'
+import SignInPage from './SignInPage.jsx'
 
 /* ═══════════════════════════════════
    HELPERS
@@ -49,15 +51,21 @@ const DEFAULT_TASKS = [
    ═══════════════════════════════════ */
 
 function App() {
+  const { isSignedIn, isLoaded } = useUser();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [plans, setPlans] = useState(() => loadState('sl_plans', DEFAULT_PLANS));
   const [tasks, setTasks] = useState(() => loadState('sl_tasks', DEFAULT_TASKS));
   const [selectedPlanId, setSelectedPlanId] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
 
-  // Persist
+  // Persist — hooks MUST be called before any early returns
   useEffect(() => saveState('sl_plans', plans), [plans]);
   useEffect(() => saveState('sl_tasks', tasks), [tasks]);
+
+  // Show nothing while Clerk is loading
+  if (!isLoaded) return null;
+
+  // Show login page if not authenticated
+  if (!isSignedIn) return <SignInPage />;
 
   const toggleTask = (taskId) => {
     setTasks(prev => prev.map(t =>
@@ -89,7 +97,7 @@ function App() {
   const totalTasks = tasks.length;
 
   return (
-    <div className="app-container" onClick={() => showProfile && setShowProfile(false)}>
+    <div className="app-container">
       {/* ─── Navbar ─── */}
       <nav className="navbar">
         <div className="nav-brand">
@@ -120,10 +128,17 @@ function App() {
 
         <div className="flex items-center gap-md">
           <button className="btn btn-primary" onClick={() => setActiveTab('new')}>+ New Plan</button>
-          <div className="nav-avatar-wrapper" onClick={(e) => e.stopPropagation()}>
-            <div className="nav-avatar" title="Profile" onClick={() => setShowProfile(p => !p)}>U</div>
-            {showProfile && <ProfileDropdown onClose={() => setShowProfile(false)} />}
-          </div>
+          <UserButton
+            appearance={{
+              elements: {
+                avatarBox: {
+                  width: 34,
+                  height: 34,
+                  boxShadow: '0 2px 8px rgba(129,140,248,0.25)',
+                },
+              },
+            }}
+          />
         </div>
       </nav>
 
