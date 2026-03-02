@@ -134,7 +134,7 @@ function App() {
                 avatarBox: {
                   width: 34,
                   height: 34,
-                  boxShadow: '0 2px 8px rgba(129,140,248,0.25)',
+                  boxShadow: '0 2px 8px rgba(45,212,191,0.20)',
                 },
               },
             }}
@@ -341,7 +341,7 @@ function GoalsCard({ plans }) {
         </div>
       </div>
 
-      <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(244, 114, 182, 0.08))' }}>
+      <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.10), rgba(99, 102, 241, 0.06))' }}>
         <p className="section-header">Tip of the Day</p>
         <p style={{ fontSize: '0.95rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
           💡 Break complex topics into <strong style={{ color: 'var(--primary)' }}>25-minute focus blocks</strong> with 5-minute breaks. Your brain learns best in short bursts!
