@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser, UserButton } from '@clerk/clerk-react'
 import SignInPage from './SignInPage.jsx'
+import WireGrid from './WireGrid.jsx'
 
 /* ═══════════════════════════════════
    HELPERS
@@ -47,6 +48,56 @@ const DEFAULT_TASKS = [
 ];
 
 /* ═══════════════════════════════════
+   CURSOR TRACKING HOOK
+   ═══════════════════════════════════ */
+
+function useCursorGlow() {
+  const [pos, setPos] = useState({ x: -500, y: -500 });
+  const handleMouseMove = useCallback((e) => {
+    setPos({ x: e.clientX, y: e.clientY });
+  }, []);
+  return { pos, handleMouseMove };
+}
+
+function useTilt(ref) {
+  const handleMouseMove = useCallback((e) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    ref.current.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-3px)`;
+  }, [ref]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!ref.current) return;
+    ref.current.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) translateY(0)';
+  }, [ref]);
+
+  return { handleMouseMove, handleMouseLeave };
+}
+
+/* ═══════════════════════════════════
+   TILT STAT CARD WRAPPER
+   ═══════════════════════════════════ */
+
+function TiltCard({ children, className = '', style = {} }) {
+  const ref = useRef(null);
+  const { handleMouseMove, handleMouseLeave } = useTilt(ref);
+
+  return (
+    <div
+      ref={ref}
+      className={`tilt-card ${className}`}
+      style={{ ...style, transition: 'transform 0.2s ease-out, box-shadow 0.2s ease-out' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════
    APP
    ═══════════════════════════════════ */
 
@@ -56,6 +107,7 @@ function App() {
   const [plans, setPlans] = useState(() => loadState('sl_plans', DEFAULT_PLANS));
   const [tasks, setTasks] = useState(() => loadState('sl_tasks', DEFAULT_TASKS));
   const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [showSignIn, setShowSignIn] = useState(false);
 
   // Persist — hooks MUST be called before any early returns
   useEffect(() => saveState('sl_plans', plans), [plans]);
@@ -64,8 +116,11 @@ function App() {
   // Show nothing while Clerk is loading
   if (!isLoaded) return null;
 
-  // Show login page if not authenticated
-  if (!isSignedIn) return <SignInPage />;
+  // Show landing page or sign-in if not authenticated
+  if (!isSignedIn) {
+    if (showSignIn) return <SignInPage onBack={() => setShowSignIn(false)} />;
+    return <LandingPage onSignIn={() => setShowSignIn(true)} />;
+  }
 
   const toggleTask = (taskId) => {
     setTasks(prev => prev.map(t =>
@@ -134,7 +189,7 @@ function App() {
                 avatarBox: {
                   width: 34,
                   height: 34,
-                  boxShadow: '0 2px 8px rgba(45,212,191,0.20)',
+                  boxShadow: '0 2px 8px rgba(79,70,229,0.20)',
                 },
               },
             }}
@@ -190,6 +245,107 @@ function App() {
 }
 
 /* ═══════════════════════════════════
+   LANDING PAGE  (Unauthenticated)
+   ═══════════════════════════════════ */
+
+function LandingPage({ onSignIn }) {
+  const card1Ref = useRef(null);
+  const card2Ref = useRef(null);
+  const card3Ref = useRef(null);
+
+  const handleFeatureMove = useCallback((e, ref) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    ref.current.style.transform = `perspective(600px) rotateY(${x * 10}deg) rotateX(${-y * 10}deg) translateY(-6px)`;
+  }, []);
+
+  const handleFeatureLeave = useCallback((ref) => {
+    if (!ref.current) return;
+    ref.current.style.transform = 'perspective(600px) rotateY(0deg) rotateX(0deg) translateY(0)';
+  }, []);
+
+  return (
+    <div className="landing-page">
+      {/* Wire grid canvas — circuit wires that charge near cursor */}
+      <WireGrid />
+
+      {/* Background orbs */}
+      <div className="landing-orb landing-orb-1" />
+      <div className="landing-orb landing-orb-2" />
+      <div className="landing-orb landing-orb-3" />
+
+      {/* Navbar */}
+      <div className="landing-navbar">
+        <div className="nav-brand">
+          <div className="nav-logo">SL</div>
+          <span className="nav-title text-gradient">SmartLearn</span>
+        </div>
+        <div className="flex items-center gap-md">
+          <button className="btn-signin" onClick={onSignIn}>
+            <span>Sign In →</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Hero */}
+      <div className="landing-hero animate-fade-in">
+        <h1 className="landing-hero-title">
+          Learn Smarter,<br />
+          <span className="text-gradient">Not Harder.</span>
+        </h1>
+        <p className="landing-hero-subtitle">
+          AI-powered study planner that helps you build schedules, track progress, and reach your learning goals faster.
+        </p>
+        <div className="landing-cta-group">
+          <button className="btn-signin" onClick={onSignIn}>
+            <span>🚀 Get Started Free</span>
+          </button>
+          <button className="btn-learn-more" onClick={onSignIn}>
+            Learn More
+          </button>
+        </div>
+
+        {/* Feature cards with 3D tilt */}
+        <div className="landing-features stagger">
+          <div
+            ref={card1Ref}
+            className="landing-feature-card"
+            onMouseMove={(e) => handleFeatureMove(e, card1Ref)}
+            onMouseLeave={() => handleFeatureLeave(card1Ref)}
+          >
+            <span className="landing-feature-icon">📊</span>
+            <h3 className="landing-feature-title">Smart Dashboard</h3>
+            <p className="landing-feature-desc">See your progress at a glance with real-time analytics and insights.</p>
+          </div>
+          <div
+            ref={card2Ref}
+            className="landing-feature-card"
+            onMouseMove={(e) => handleFeatureMove(e, card2Ref)}
+            onMouseLeave={() => handleFeatureLeave(card2Ref)}
+          >
+            <span className="landing-feature-icon">📚</span>
+            <h3 className="landing-feature-title">Study Plans</h3>
+            <p className="landing-feature-desc">Create custom learning paths and stay organized with milestones.</p>
+          </div>
+          <div
+            ref={card3Ref}
+            className="landing-feature-card"
+            onMouseMove={(e) => handleFeatureMove(e, card3Ref)}
+            onMouseLeave={() => handleFeatureLeave(card3Ref)}
+          >
+            <span className="landing-feature-icon">📅</span>
+            <h3 className="landing-feature-title">Smart Scheduling</h3>
+            <p className="landing-feature-desc">Automatically build optimal study sessions around your life.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════
    PROFILE DROPDOWN
    ═══════════════════════════════════ */
 
@@ -241,11 +397,15 @@ function ProfileDropdown({ onClose }) {
 
 function DashboardView({ tasks, toggleTask, completedToday, totalTasks, plans, onViewAll }) {
   const pendingCount = totalTasks - completedToday;
-  const streak = 12; // placeholder — could be computed
+  const streak = 12;
   const weeklyTime = '16h';
+  const { pos, handleMouseMove } = useCursorGlow();
 
   return (
-    <div className="flex-col gap-xl">
+    <div className="flex-col gap-xl" onMouseMove={handleMouseMove} style={{ position: 'relative' }}>
+      {/* Cursor glow effect */}
+      <div className="cursor-glow" style={{ left: pos.x, top: pos.y }} />
+
       {/* Greeting */}
       <div>
         <h2 className="h1" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -258,9 +418,15 @@ function DashboardView({ tasks, toggleTask, completedToday, totalTasks, plans, o
 
       {/* ─── Stats ─── */}
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-lg)' }}>
-        <StatCard icon="🔥" iconClass="stat-icon-fire" label="Current Streak" value={`${streak}`} unit="days" />
-        <StatCard icon="✅" iconClass="stat-icon-check" label="Tasks Completed" value={`${completedToday}`} unit="today" />
-        <StatCard icon="⏱️" iconClass="stat-icon-clock" label="Learning Time" value={weeklyTime} unit="this week" />
+        <TiltCard className="glass-card">
+          <StatCardContent icon="🔥" iconClass="stat-icon-fire" label="Current Streak" value={`${streak}`} unit="days" />
+        </TiltCard>
+        <TiltCard className="glass-card">
+          <StatCardContent icon="✅" iconClass="stat-icon-check" label="Tasks Completed" value={`${completedToday}`} unit="today" />
+        </TiltCard>
+        <TiltCard className="glass-card">
+          <StatCardContent icon="⏱️" iconClass="stat-icon-clock" label="Learning Time" value={weeklyTime} unit="this week" />
+        </TiltCard>
       </div>
 
       {/* ─── Schedule & Goals ─── */}
@@ -272,18 +438,16 @@ function DashboardView({ tasks, toggleTask, completedToday, totalTasks, plans, o
   )
 }
 
-/* ─── Stat Card ─── */
-function StatCard({ icon, iconClass, label, value, unit }) {
+/* ─── Stat Card Content ─── */
+function StatCardContent({ icon, iconClass, label, value, unit }) {
   return (
-    <div className="glass-card">
-      <div className="flex items-center gap-lg">
-        <div className={`stat-icon ${iconClass}`}>{icon}</div>
-        <div>
-          <p className="section-header">{label}</p>
-          <div className="flex items-center gap-sm">
-            <span className="h1 text-gradient" style={{ lineHeight: 1 }}>{value}</span>
-            <span className="text-muted" style={{ fontSize: '0.9rem' }}>{unit}</span>
-          </div>
+    <div className="flex items-center gap-lg">
+      <div className={`stat-icon ${iconClass}`}>{icon}</div>
+      <div>
+        <p className="section-header">{label}</p>
+        <div className="flex items-center gap-sm">
+          <span className="h1 text-gradient" style={{ lineHeight: 1 }}>{value}</span>
+          <span className="text-muted" style={{ fontSize: '0.9rem' }}>{unit}</span>
         </div>
       </div>
     </div>
@@ -341,7 +505,7 @@ function GoalsCard({ plans }) {
         </div>
       </div>
 
-      <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.10), rgba(99, 102, 241, 0.06))' }}>
+      <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.04), rgba(14, 165, 233, 0.03))' }}>
         <p className="section-header">Tip of the Day</p>
         <p style={{ fontSize: '0.95rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
           💡 Break complex topics into <strong style={{ color: 'var(--primary)' }}>25-minute focus blocks</strong> with 5-minute breaks. Your brain learns best in short bursts!
@@ -621,7 +785,7 @@ function NewPlanView({ onCancel, onSubmit }) {
               width: step === 1 ? 32 : 8,
               height: 8,
               borderRadius: 4,
-              background: step === 1 ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+              background: step === 1 ? 'var(--primary)' : 'rgba(0,0,0,0.08)',
               transition: 'all 0.3s ease',
             }}
           />
