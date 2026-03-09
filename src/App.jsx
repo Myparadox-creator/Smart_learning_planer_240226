@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useUser, UserButton } from '@clerk/clerk-react'
 import SignInPage from './SignInPage.jsx'
 import WireGrid from './WireGrid.jsx'
+import { LayoutDashboard, BookOpen, CalendarDays, Settings, Sun, Moon, Rocket, User, Bell, LogOut, Flame, CheckCircle, Timer, Lightbulb, Save, Edit2, Trash2, HandMetal, Heart } from 'lucide-react'
 
 /* ═══════════════════════════════════
    HELPERS
@@ -212,26 +213,30 @@ function App() {
           <button
             className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            📊 Dashboard
+            <LayoutDashboard size={16} /> Dashboard
           </button>
           <button
             className={`nav-tab ${activeTab === 'plans' || activeTab === 'manage' ? 'active' : ''}`}
             onClick={() => setActiveTab('plans')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            📚 Study Plans
+            <BookOpen size={16} /> Study Plans
           </button>
           <button
             className={`nav-tab ${activeTab === 'schedule' ? 'active' : ''}`}
             onClick={() => setActiveTab('schedule')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            📅 Schedule
+            <CalendarDays size={16} /> Schedule
           </button>
           <button
             className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
-            ⚙️ Settings
+            <Settings size={16} /> Settings
           </button>
         </div>
 
@@ -241,8 +246,9 @@ function App() {
             onClick={() => setDarkMode(d => !d)}
             title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             id="theme-toggle"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <span className="theme-toggle-icon">{darkMode ? '☀️' : '🌙'}</span>
+            <span className="theme-toggle-icon" style={{ display: 'flex' }}>{darkMode ? <Sun size={18} /> : <Moon size={18} />}</span>
           </button>
           <button className="btn btn-primary" onClick={() => setActiveTab('new')}>+ New Plan</button>
           <UserButton
@@ -306,8 +312,8 @@ function App() {
       </main>
 
       {/* ─── Footer ─── */}
-      <footer className="footer container">
-        Built with ❤️ by SmartLearn · Helping you learn smarter, not harder
+      <footer className="footer container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+        Built with <Heart size={14} fill="currentColor" style={{ color: 'var(--danger)' }} /> by SmartLearn &middot; Helping you learn smarter, not harder
       </footer>
     </div>
   )
@@ -369,7 +375,7 @@ function LandingPage({ onSignIn }) {
         </p>
         <div className="landing-cta-group">
           <button className="btn-signin" onClick={onSignIn}>
-            <span>🚀 Get Started Free</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Rocket size={18} /> Get Started Free</span>
           </button>
           <button className="btn-learn-more" onClick={onSignIn}>
             Learn More
@@ -384,7 +390,7 @@ function LandingPage({ onSignIn }) {
             onMouseMove={(e) => handleFeatureMove(e, card1Ref)}
             onMouseLeave={() => handleFeatureLeave(card1Ref)}
           >
-            <span className="landing-feature-icon">📊</span>
+            <span className="landing-feature-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><LayoutDashboard size={24} /></span>
             <h3 className="landing-feature-title">Smart Dashboard</h3>
             <p className="landing-feature-desc">See your progress at a glance with real-time analytics and insights.</p>
           </div>
@@ -394,7 +400,7 @@ function LandingPage({ onSignIn }) {
             onMouseMove={(e) => handleFeatureMove(e, card2Ref)}
             onMouseLeave={() => handleFeatureLeave(card2Ref)}
           >
-            <span className="landing-feature-icon">📚</span>
+            <span className="landing-feature-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={24} /></span>
             <h3 className="landing-feature-title">Study Plans</h3>
             <p className="landing-feature-desc">Create custom learning paths and stay organized with milestones.</p>
           </div>
@@ -404,7 +410,7 @@ function LandingPage({ onSignIn }) {
             onMouseMove={(e) => handleFeatureMove(e, card3Ref)}
             onMouseLeave={() => handleFeatureLeave(card3Ref)}
           >
-            <span className="landing-feature-icon">📅</span>
+            <span className="landing-feature-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CalendarDays size={24} /></span>
             <h3 className="landing-feature-title">Smart Scheduling</h3>
             <p className="landing-feature-desc">Automatically build optimal study sessions around your life.</p>
           </div>
@@ -430,10 +436,10 @@ function ProfileDropdown({ onClose }) {
   }, [onClose]);
 
   const items = [
-    { icon: '👤', label: 'My Profile' },
-    { icon: '🔔', label: 'Notifications' },
-    { icon: '⚙️', label: 'Settings' },
-    { icon: '🚪', label: 'Sign Out' },
+    { icon: <User size={16} />, label: 'My Profile' },
+    { icon: <Bell size={16} />, label: 'Notifications' },
+    { icon: <Settings size={16} />, label: 'Settings' },
+    { icon: <LogOut size={16} />, label: 'Sign Out' },
   ];
 
   return (
@@ -452,7 +458,7 @@ function ProfileDropdown({ onClose }) {
           className="profile-dropdown-item"
           onClick={() => { alert(`${item.label} — coming soon!`); onClose(); }}
         >
-          <span>{item.icon}</span>
+          <span style={{ display: 'flex' }}>{item.icon}</span>
           <span>{item.label}</span>
         </button>
       ))}
@@ -477,8 +483,8 @@ function DashboardView({ tasks, toggleTask, completedToday, totalTasks, plans, o
 
       {/* Greeting */}
       <div>
-        <h2 className="h1" style={{ marginBottom: 'var(--space-xs)' }}>
-          Welcome back! <span style={{ display: 'inline-block', animation: 'wave 1.8s ease-in-out infinite' }}>👋</span>
+        <h2 className="h1" style={{ marginBottom: 'var(--space-xs)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          Welcome back! <span style={{ display: 'inline-flex', animation: 'wave 1.8s ease-in-out infinite' }}><HandMetal size={32} /></span>
         </h2>
         <p className="text-secondary" style={{ fontSize: '1.05rem' }}>
           You have <strong style={{ color: 'var(--primary)' }}>{pendingCount} task{pendingCount !== 1 ? 's' : ''}</strong> pending for today. Let's crush them!
@@ -488,13 +494,13 @@ function DashboardView({ tasks, toggleTask, completedToday, totalTasks, plans, o
       {/* ─── Stats ─── */}
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-lg)' }}>
         <TiltCard className="glass-card">
-          <StatCardContent icon="🔥" iconClass="stat-icon-fire" label="Current Streak" value={`${streak}`} unit="days" />
+          <StatCardContent icon={<Flame size={24} />} iconClass="stat-icon-fire" label="Current Streak" value={`${streak}`} unit="days" />
         </TiltCard>
         <TiltCard className="glass-card">
-          <StatCardContent icon="✅" iconClass="stat-icon-check" label="Tasks Completed" value={`${completedToday}`} unit="today" />
+          <StatCardContent icon={<CheckCircle size={24} />} iconClass="stat-icon-check" label="Tasks Completed" value={`${completedToday}`} unit="today" />
         </TiltCard>
         <TiltCard className="glass-card">
-          <StatCardContent icon="⏱️" iconClass="stat-icon-clock" label="Learning Time" value={weeklyTime} unit="this week" />
+          <StatCardContent icon={<Timer size={24} />} iconClass="stat-icon-clock" label="Learning Time" value={weeklyTime} unit="this week" />
         </TiltCard>
       </div>
 
@@ -576,9 +582,12 @@ function GoalsCard({ plans }) {
 
       <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.04), rgba(14, 165, 233, 0.03))' }}>
         <p className="section-header">Tip of the Day</p>
-        <p style={{ fontSize: '0.95rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
-          💡 Break complex topics into <strong style={{ color: 'var(--primary)' }}>25-minute focus blocks</strong> with 5-minute breaks. Your brain learns best in short bursts!
-        </p>
+        <div style={{ fontSize: '0.95rem', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+            <Lightbulb size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <span>Break complex topics into <strong style={{ color: 'var(--primary)' }}>25-minute focus blocks</strong> with 5-minute breaks. Your brain learns best in short bursts!</span>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -798,13 +807,13 @@ function ManagePlanView({ plan, onBack, onUpdate, onDelete }) {
       <div className="flex justify-between items-center" style={{ borderTop: '1px solid var(--border)', paddingTop: 'var(--space-lg)' }}>
         {editing ? (
           <div className="flex gap-md">
-            <button className="btn btn-primary" onClick={handleSave}>💾 Save Changes</button>
+            <button className="btn btn-primary" onClick={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Save size={16} /> Save Changes</button>
             <button className="btn btn-secondary" onClick={() => { setEditing(false); setName(plan.name); setDescription(plan.description); setProgress(plan.progress); }}>Cancel</button>
           </div>
         ) : (
-          <button className="btn btn-primary" onClick={() => setEditing(true)}>✏️ Edit Plan</button>
+          <button className="btn btn-primary" onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Edit2 size={16} /> Edit Plan</button>
         )}
-        <button className="btn btn-danger-outline" onClick={() => setShowDeleteConfirm(true)}>🗑️ Delete</button>
+        <button className="btn btn-danger-outline" onClick={() => setShowDeleteConfirm(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Trash2 size={16} /> Delete</button>
       </div>
 
       {/* Delete Confirmation */}
@@ -895,7 +904,7 @@ function NewPlanView({ onCancel, onSubmit }) {
 
         <div className="flex justify-between items-center" style={{ marginTop: 'var(--space-md)' }}>
           <button type="button" className="btn btn-secondary" onClick={onCancel}>Cancel</button>
-          <button type="submit" className="btn btn-primary">🚀 Create Plan</button>
+          <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Rocket size={16} /> Create Plan</button>
         </div>
       </form>
     </div>

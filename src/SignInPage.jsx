@@ -1,4 +1,5 @@
 import { SignIn } from '@clerk/clerk-react'
+import { BookOpen, Calendar, Rocket } from 'lucide-react'
 
 export default function SignInPage({ onBack }) {
     return (
@@ -170,8 +171,12 @@ export default function SignInPage({ onBack }) {
                         color: '#94a3b8',
                         fontSize: '0.78rem',
                         letterSpacing: '0.03em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem'
                     }}>
-                        📚 Track progress · 📅 Build schedules · 🚀 Learn smarter
+                        <BookOpen size={14} /> Track progress &middot; <Calendar size={14} /> Build schedules &middot; <Rocket size={14} /> Learn smarter
                     </p>
                 </div>
             </div>
