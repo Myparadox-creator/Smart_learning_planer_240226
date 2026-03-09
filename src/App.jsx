@@ -108,18 +108,66 @@ function App() {
   const [tasks, setTasks] = useState(() => loadState('sl_tasks', DEFAULT_TASKS));
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [showSignIn, setShowSignIn] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => loadState('sl_darkMode', false));
+
+  const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
   // Persist — hooks MUST be called before any early returns
   useEffect(() => saveState('sl_plans', plans), [plans]);
   useEffect(() => saveState('sl_tasks', tasks), [tasks]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : 'light';
+    saveState('sl_darkMode', darkMode);
+  }, [darkMode]);
 
-  // Show nothing while Clerk is loading
-  if (!isLoaded) return null;
+  // Clerk loading timeout — if Clerk doesn't load in 8s, let the user continue
+  useEffect(() => {
+    if (isLoaded) return;
+    const timer = setTimeout(() => setClerkTimedOut(true), 8000);
+    return () => clearTimeout(timer);
+  }, [isLoaded]);
+
+  // Show loading screen while Clerk is loading
+  if (!isLoaded && !clerkTimedOut) {
+    return (
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', gap: '1.5rem', fontFamily: "'Inter', system-ui, sans-serif",
+        background: 'var(--background)', color: 'var(--text-main)',
+      }}>
+        <div className="nav-logo" style={{ width: 56, height: 56, fontSize: '1.3rem' }}>SL</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{
+            width: 28, height: 28, border: '3px solid rgba(79,70,229,0.15)',
+            borderTopColor: '#4f46e5', borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading SmartLearn...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // When Clerk timed out, let the user bypass auth via the landing page buttons
+  const handleSignIn = () => {
+    if (clerkTimedOut) {
+      // Clerk unavailable — skip auth, go straight to dashboard
+      setShowSignIn(true);
+    } else {
+      setShowSignIn(true);
+    }
+  };
 
   // Show landing page or sign-in if not authenticated
-  if (!isSignedIn) {
+  if (!isSignedIn && !clerkTimedOut) {
     if (showSignIn) return <SignInPage onBack={() => setShowSignIn(false)} />;
-    return <LandingPage onSignIn={() => setShowSignIn(true)} />;
+    return <LandingPage onSignIn={handleSignIn} />;
+  }
+
+  // If Clerk timed out and user hasn't clicked "enter", show landing page
+  if (clerkTimedOut && !isSignedIn && !showSignIn) {
+    return <LandingPage onSignIn={handleSignIn} />;
   }
 
   const toggleTask = (taskId) => {
@@ -179,9 +227,23 @@ function App() {
           >
             📅 Schedule
           </button>
+          <button
+            className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            ⚙️ Settings
+          </button>
         </div>
 
         <div className="flex items-center gap-md">
+          <button
+            className="theme-toggle-btn"
+            onClick={() => setDarkMode(d => !d)}
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            id="theme-toggle"
+          >
+            <span className="theme-toggle-icon">{darkMode ? '☀️' : '🌙'}</span>
+          </button>
           <button className="btn btn-primary" onClick={() => setActiveTab('new')}>+ New Plan</button>
           <UserButton
             appearance={{
@@ -232,6 +294,13 @@ function App() {
             onBack={() => setActiveTab('plans')}
             onUpdate={updatePlan}
             onDelete={deletePlan}
+          />
+        )}
+        {activeTab === 'settings' && (
+          <SettingsView
+            darkMode={darkMode}
+            onToggleDark={() => setDarkMode(d => !d)}
+            onBack={() => setActiveTab('dashboard')}
           />
         )}
       </main>
@@ -831,6 +900,48 @@ function NewPlanView({ onCancel, onSubmit }) {
       </form>
     </div>
   )
+}
+
+/* ═══════════════════════════════════
+   SETTINGS VIEW
+   ═══════════════════════════════════ */
+
+function SettingsView({ darkMode, onToggleDark, onBack }) {
+  return (
+    <div className="glass-card animate-fade-in" style={{ maxWidth: '700px', margin: '0 auto' }}>
+      <button className="btn btn-ghost" onClick={onBack} style={{ marginBottom: 'var(--space-sm)', padding: '0.3rem 0' }}>← Back to Dashboard</button>
+      <h2 className="h2" style={{ marginBottom: 'var(--space-xs)' }}>Settings</h2>
+      <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: 'var(--space-lg)' }}>
+        Customize your SmartLearn experience
+      </p>
+
+      {/* Appearance */}
+      <div className="settings-section">
+        <p className="settings-section-title">Appearance</p>
+
+        <div className="settings-row">
+          <div>
+            <p className="settings-row-label">{darkMode ? '🌙' : '☀️'} Dark Mode</p>
+            <p className="settings-row-desc">Switch between light and dark themes</p>
+          </div>
+          <label className="toggle-switch" id="dark-mode-toggle">
+            <input type="checkbox" checked={darkMode} onChange={onToggleDark} />
+            <span className="toggle-track" />
+            <span className="toggle-thumb" />
+          </label>
+        </div>
+      </div>
+
+      {/* About */}
+      <div className="settings-section">
+        <p className="settings-section-title">About</p>
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+          <p><strong style={{ color: 'var(--text-main)' }}>SmartLearn</strong> v1.0</p>
+          <p className="text-muted" style={{ marginTop: '4px' }}>AI-powered study planner — helping you learn smarter, not harder.</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default App
