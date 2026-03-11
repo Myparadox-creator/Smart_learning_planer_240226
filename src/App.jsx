@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useUser, UserButton } from '@clerk/clerk-react'
+import { useUser, useAuth, UserButton } from '@clerk/clerk-react'
 import SignInPage from './SignInPage.jsx'
 import WireGrid from './WireGrid.jsx'
 import { LayoutDashboard, BookOpen, CalendarDays, Settings, Sun, Moon, Rocket, User, Bell, LogOut, Flame, CheckCircle, Timer, Lightbulb, Save, Edit2, Trash2, HandMetal, Heart } from 'lucide-react'
@@ -7,6 +7,8 @@ import { LayoutDashboard, BookOpen, CalendarDays, Settings, Sun, Moon, Rocket, U
 /* ═══════════════════════════════════
    HELPERS
    ═══════════════════════════════════ */
+
+const API_URL = 'http://localhost:5000/api';
 
 function loadState(key, fallback) {
   try {
@@ -18,35 +20,6 @@ function loadState(key, fallback) {
 function saveState(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
-
-const DEFAULT_PLANS = [
-  {
-    id: 1,
-    name: 'Frontend Mastery',
-    description: 'Complete React, CSS, and Build 3 Projects.',
-    topics: ['React', 'CSS', 'Projects'],
-    progress: 65,
-    status: 'Active',
-    startDate: '2026-01-15',
-    endDate: '2026-06-15',
-  },
-  {
-    id: 2,
-    name: 'Python Bootcamp',
-    description: 'Learn Python fundamentals & data structures.',
-    topics: ['Python', 'DSA'],
-    progress: 30,
-    status: 'In Progress',
-    startDate: '2026-02-01',
-    endDate: '2026-05-01',
-  },
-];
-
-const DEFAULT_TASKS = [
-  { id: 1, time: '10:00 AM', title: 'React Fundamentals', subject: 'Frontend Dev', duration: '45m', status: 'done' },
-  { id: 2, time: '02:00 PM', title: 'CSS Grid Layouts', subject: 'Frontend Dev', duration: '30m', status: 'pending' },
-  { id: 3, time: '04:30 PM', title: 'Algorithm Practice', subject: 'Computer Science', duration: '60m', status: 'pending' },
-];
 
 /* ═══════════════════════════════════
    CURSOR TRACKING HOOK
@@ -104,18 +77,46 @@ function TiltCard({ children, className = '', style = {} }) {
 
 function App() {
   const { isSignedIn, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [plans, setPlans] = useState(() => loadState('sl_plans', DEFAULT_PLANS));
-  const [tasks, setTasks] = useState(() => loadState('sl_tasks', DEFAULT_TASKS));
+  const [plans, setPlans] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [darkMode, setDarkMode] = useState(() => loadState('sl_darkMode', false));
 
   const [clerkTimedOut, setClerkTimedOut] = useState(false);
 
-  // Persist — hooks MUST be called before any early returns
-  useEffect(() => saveState('sl_plans', plans), [plans]);
-  useEffect(() => saveState('sl_tasks', tasks), [tasks]);
+  // Authenticated fetch helper
+  const apiFetch = useCallback(async (endpoint, options = {}) => {
+    const token = await getToken();
+    const fetchOptions = {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    };
+    if (options.body) fetchOptions.body = JSON.stringify(options.body);
+    const res = await fetch(`${API_URL}${endpoint}`, fetchOptions);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    return res.json();
+  }, [getToken]);
+
+  // Fetch plans from backend
+  useEffect(() => {
+    if (!isSignedIn && !clerkTimedOut) return;
+    apiFetch('/plans').then(setPlans).catch(console.error);
+  }, [isSignedIn, clerkTimedOut, apiFetch]);
+
+  // Fetch tasks from backend
+  useEffect(() => {
+    if (!isSignedIn && !clerkTimedOut) return;
+    apiFetch('/tasks').then(setTasks).catch(console.error);
+  }, [isSignedIn, clerkTimedOut, apiFetch]);
+
+  // Dark mode persistence (still uses localStorage — it's a UI pref, not user data)
   useEffect(() => {
     document.documentElement.dataset.theme = darkMode ? 'dark' : 'light';
     saveState('sl_darkMode', darkMode);
@@ -171,25 +172,53 @@ function App() {
     return <LandingPage onSignIn={handleSignIn} />;
   }
 
-  const toggleTask = (taskId) => {
-    setTasks(prev => prev.map(t =>
-      t.id === taskId ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t
-    ));
+  const toggleTask = async (taskId) => {
+    try {
+      const task = tasks.find(t => t._id === taskId);
+      const updated = await apiFetch(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: { status: task.status === 'done' ? 'pending' : 'done' },
+      });
+      setTasks(prev => prev.map(t => t._id === taskId ? updated : t));
+    } catch (err) {
+      console.error('Failed to toggle task:', err);
+    }
   };
 
-  const addPlan = (plan) => {
-    setPlans(prev => [...prev, { ...plan, id: Date.now(), progress: 0, status: 'Active' }]);
-    setActiveTab('plans');
+  const addPlan = async (plan) => {
+    try {
+      const newPlan = await apiFetch('/plans', {
+        method: 'POST',
+        body: plan,
+      });
+      setPlans(prev => [...prev, newPlan]);
+      setActiveTab('plans');
+    } catch (err) {
+      console.error('Failed to add plan:', err);
+    }
   };
 
-  const updatePlan = (id, updates) => {
-    setPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  const updatePlan = async (id, updates) => {
+    try {
+      const updated = await apiFetch(`/plans/${id}`, {
+        method: 'PUT',
+        body: updates,
+      });
+      setPlans(prev => prev.map(p => p._id === id ? updated : p));
+    } catch (err) {
+      console.error('Failed to update plan:', err);
+    }
   };
 
-  const deletePlan = (id) => {
-    setPlans(prev => prev.filter(p => p.id !== id));
-    setSelectedPlanId(null);
-    setActiveTab('plans');
+  const deletePlan = async (id) => {
+    try {
+      await apiFetch(`/plans/${id}`, { method: 'DELETE' });
+      setPlans(prev => prev.filter(p => p._id !== id));
+      setSelectedPlanId(null);
+      setActiveTab('plans');
+    } catch (err) {
+      console.error('Failed to delete plan:', err);
+    }
   };
 
   const openManage = (id) => {
@@ -296,7 +325,7 @@ function App() {
         )}
         {activeTab === 'manage' && selectedPlanId && (
           <ManagePlanView
-            plan={plans.find(p => p.id === selectedPlanId)}
+            plan={plans.find(p => p._id === selectedPlanId)}
             onBack={() => setActiveTab('plans')}
             onUpdate={updatePlan}
             onDelete={deletePlan}
@@ -539,7 +568,7 @@ function ScheduleCard({ tasks, toggleTask, onViewAll }) {
       </div>
       <div className="flex-col gap-sm stagger-left">
         {tasks.map((task) => (
-          <div key={task.id} className={`schedule-row ${task.status === 'done' ? 'done' : ''}`}>
+          <div key={task._id} className={`schedule-row ${task.status === 'done' ? 'done' : ''}`}>
             <div className="flex gap-md items-center">
               <span className="schedule-time">{task.time}</span>
               <div>
@@ -551,7 +580,7 @@ function ScheduleCard({ tasks, toggleTask, onViewAll }) {
               <span className="schedule-duration">{task.duration}</span>
               <div
                 className={`check-circle clickable ${task.status === 'done' ? 'checked' : ''}`}
-                onClick={() => toggleTask(task.id)}
+                onClick={() => toggleTask(task._id)}
                 title={task.status === 'done' ? 'Mark as pending' : 'Mark as done'}
               />
             </div>
@@ -638,7 +667,7 @@ function ScheduleFullView({ tasks, toggleTask, onBack }) {
 
       <div className="flex-col gap-sm">
         {tasks.map((task) => (
-          <div key={task.id} className={`schedule-row ${task.status === 'done' ? 'done' : ''}`}>
+          <div key={task._id} className={`schedule-row ${task.status === 'done' ? 'done' : ''}`}>
             <div className="flex gap-md items-center">
               <span className="schedule-time">{task.time}</span>
               <div>
@@ -650,7 +679,7 @@ function ScheduleFullView({ tasks, toggleTask, onBack }) {
               <span className="schedule-duration">{task.duration}</span>
               <div
                 className={`check-circle clickable ${task.status === 'done' ? 'checked' : ''}`}
-                onClick={() => toggleTask(task.id)}
+                onClick={() => toggleTask(task._id)}
                 title={task.status === 'done' ? 'Mark as pending' : 'Mark as done'}
               />
             </div>
@@ -675,7 +704,7 @@ function StudyPlansView({ plans, onNewPlan, onManage }) {
 
       <div className="stagger" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-lg)' }}>
         {plans.map(plan => (
-          <div key={plan.id} className="plan-card">
+          <div key={plan._id} className="plan-card">
             <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-sm)', paddingLeft: 'var(--space-md)' }}>
               <h3 className="h3">{plan.name}</h3>
               <span className={`badge ${plan.status === 'Active' ? 'badge-success' : 'badge-warning'}`}>{plan.status}</span>
@@ -695,7 +724,7 @@ function StudyPlansView({ plans, onNewPlan, onManage }) {
               <span className="text-muted" style={{ fontSize: '0.8rem' }}>
                 Started {new Date(plan.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </span>
-              <button className="btn btn-ghost text-gradient" style={{ fontWeight: 600 }} onClick={() => onManage(plan.id)}>Manage →</button>
+              <button className="btn btn-ghost text-gradient" style={{ fontWeight: 600 }} onClick={() => onManage(plan._id)}>Manage →</button>
             </div>
           </div>
         ))}
@@ -731,7 +760,7 @@ function ManagePlanView({ plan, onBack, onUpdate, onDelete }) {
   }
 
   const handleSave = () => {
-    onUpdate(plan.id, { name, description, progress: Number(progress) });
+    onUpdate(plan._id, { name, description, progress: Number(progress) });
     setEditing(false);
   };
 
@@ -826,7 +855,7 @@ function ManagePlanView({ plan, onBack, onUpdate, onDelete }) {
             </p>
             <div className="flex justify-between gap-md">
               <button className="btn btn-secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
-              <button className="btn btn-danger" onClick={() => onDelete(plan.id)}>Yes, Delete</button>
+              <button className="btn btn-danger" onClick={() => onDelete(plan._id)}>Yes, Delete</button>
             </div>
           </div>
         </div>
@@ -930,7 +959,7 @@ function SettingsView({ darkMode, onToggleDark, onBack }) {
 
         <div className="settings-row">
           <div>
-            <p className="settings-row-label">{darkMode ? '🌙' : '☀️'} Dark Mode</p>
+            <p className="settings-row-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>{darkMode ? <Moon size={16} /> : <Sun size={16} />} Dark Mode</p>
             <p className="settings-row-desc">Switch between light and dark themes</p>
           </div>
           <label className="toggle-switch" id="dark-mode-toggle">
